@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seed QR — Crypto Seed Phrase Generator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111418;
+    --surface2: #181d22;
+    --border: #1e252d;
+    --border2: #252d37;
+    --accent: #00d4aa;
+    --accent-dim: rgba(0,212,170,0.12);
+    --accent-dim2: rgba(0,212,170,0.06);
+    --warn: #f5a623;
+    --warn-dim: rgba(245,166,35,0.1);
+    --danger: #e05555;
+    --text: #e2e8f0;
+    --text2: #8899aa;
+    --text3: #4a5568;
+    --success: #00d4aa;
+    --radius: 8px;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 300;
+    min-height: 100vh;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    margin-bottom: 40px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .logo-icon {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 20px rgba(0,212,170,0.2), inset 0 0 20px rgba(0,212,170,0.05);
+  }
+
+  .logo-icon svg { display: block; }
+
+  .logo-text {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+
+  .logo-text span { color: var(--accent); }
+
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 3px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid rgba(0,212,170,0.2);
+  }
+
+  .badge.warn {
+    background: var(--warn-dim);
+    color: var(--warn);
+    border-color: rgba(245,166,35,0.2);
+  }
+
+  /* Warning banner */
+  .warning-banner {
+    background: var(--warn-dim);
+    border: 1px solid rgba(245,166,35,0.25);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 28px;
+  }
+
+  .warning-banner svg { flex-shrink: 0; margin-top: 1px; }
+  .warning-banner p { font-size: 12px; color: var(--warn); line-height: 1.7; font-weight: 400; }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 9px 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text3);
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+
+  .tab.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid rgba(0,212,170,0.2);
+  }
+
+  .tab:not(.active):hover { color: var(--text2); background: var(--surface2); }
+
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 16px;
+  }
+
+  /* Form elements */
+  label.field-label {
+    display: block;
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 6px;
+    font-family: var(--mono);
+  }
+
+  textarea, input[type="password"], input[type="text"], select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 5px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus, input:focus, select:focus {
+    border-color: rgba(0,212,170,0.4);
+    box-shadow: 0 0 0 3px rgba(0,212,170,0.06);
+  }
+
+  textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
+  select { appearance: none; cursor: pointer; }
+  select option { background: var(--surface2); }
+
+  .field-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .field-row > div { flex: 1; min-width: 150px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border2);
+    border-radius: 5px;
+    cursor: pointer;
+    background: var(--surface2);
+    color: var(--text2);
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim2); }
+
+  .btn.primary {
+    background: var(--accent-dim);
+    border-color: rgba(0,212,170,0.3);
+    color: var(--accent);
+  }
+
+  .btn.primary:hover { background: rgba(0,212,170,0.2); box-shadow: 0 0 20px rgba(0,212,170,0.1); }
+
+  .btn.ghost { background: transparent; border-color: var(--border); color: var(--text3); }
+  .btn.ghost:hover { color: var(--text2); border-color: var(--border2); }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  .btn-row .btn.primary { flex: 1; }
+
+  /* QR Output */
+  .qr-output {
+    display: none;
+    text-align: center;
+    margin-top: 16px;
+  }
+
+  .qr-wrap {
+    display: inline-block;
+    background: #fff;
+    padding: 20px;
+    border-radius: var(--radius);
+    box-shadow: 0 0 40px rgba(0,212,170,0.08);
+  }
+
+  .qr-wrap img, .qr-wrap canvas { display: block; }
+
+  .qr-meta {
+    margin-top: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .qr-meta .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
+
+  .qr-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  /* Camera */
+  .cam-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1/1;
+    max-height: 300px;
+    background: #000;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  #camVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  #camCanvas { display: none; }
+
+  .cam-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .cam-frame {
+    width: 55%;
+    height: 55%;
+    position: relative;
+  }
+
+  .cam-frame::before, .cam-frame::after,
+  .cam-frame > span::before, .cam-frame > span::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: var(--accent);
+    border-style: solid;
+  }
+
+  .cam-frame::before { top: 0; left: 0; border-width: 2px 0 0 2px; }
+  .cam-frame::after { top: 0; right: 0; border-width: 2px 2px 0 0; }
+  .cam-frame > span::before { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+  .cam-frame > span::after { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+  .cam-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text3);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  /* Result box */
+  .result-box {
+    display: none;
+    margin-top: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+
+  .result-box.success { border-color: rgba(0,212,170,0.3); background: rgba(0,212,170,0.04); }
+  .result-box.error { border-color: rgba(224,85,85,0.3); background: rgba(224,85,85,0.04); }
+
+  .result-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+
+  .result-text {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    word-break: break-all;
+    line-height: 1.7;
+  }
+
+  .result-text.dim { color: var(--text2); font-size: 11px; }
+
+  /* Decrypt inline area */
+  .decrypt-inline {
+    display: none;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  .decrypt-inline p {
+    font-size: 12px;
+    color: var(--warn);
+    margin-bottom: 10px;
+    font-family: var(--mono);
+  }
+
+  .inline-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .inline-row input { flex: 1; }
+
+  /* Status */
+  .status {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text3);
+    text-align: center;
+    margin-top: 10px;
+    min-height: 18px;
+    transition: color 0.2s;
+  }
+
+  .status.active { color: var(--accent); }
+  .status.error { color: var(--danger); }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+
+  /* Upload label as button */
+  .upload-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border2);
+    border-radius: 5px;
+    cursor: pointer;
+    background: var(--surface2);
+    color: var(--text2);
+    transition: all 0.2s;
+  }
+
+  .upload-label:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim2); }
+  .upload-label input { display: none; }
+
+  /* Scanning animation */
+  @keyframes scanLine {
+    0% { transform: translateY(0%); opacity: 1; }
+    100% { transform: translateY(100%); opacity: 0; }
+  }
+
+  .scan-line {
+    display: none;
+    position: absolute;
+    top: 22.5%;
+    left: 22.5%;
+    width: 55%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: scanLine 1.5s ease-in-out infinite;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .scan-line.active { display: block; }
+
+  /* Footer */
+  .footer {
+    margin-top: 40px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    line-height: 1.8;
+  }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    .container { padding: 28px 16px 60px; }
+    .field-row { flex-direction: column; }
+    .btn-row { flex-direction: column; }
+    .btn-row .btn { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00d4aa" stroke-width="1.5">
+          <rect x="3" y="11" width="18" height="11" rx="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <span class="logo-text">Seed<span>QR</span></span>
+    </div>
+    <div class="header-meta">
+      <span class="badge">100% Offline</span>
+      <span class="badge">AES-256-GCM</span>
+      <span class="badge warn">Handle with care</span>
+    </div>
+  </div>
+
+  <!-- Warning -->
+  <div class="warning-banner">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+    <p>Siapapun yang mendapatkan QR code ini dapat mengakses crypto wallet kamu. Gunakan enkripsi PIN dan simpan di tempat fisik yang aman. Seluruh proses berjalan lokal di browser — tidak ada data yang dikirim ke server manapun.</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" id="tab-gen" onclick="switchTab('gen')">// Buat QR</button>
+    <button class="tab" id="tab-scan" onclick="switchTab('scan')">// Scan QR</button>
+    <button class="tab" id="tab-dec" onclick="switchTab('dec')">// Dekripsi</button>
+  </div>
+
+  <!-- PANEL: BUAT QR -->
+  <div class="panel active" id="panel-gen">
+    <div class="card">
+      <div class="card-title">Input Seed Phrase</div>
+
+      <label class="field-label">seed phrase / private key</label>
+      <textarea id="seedInput" placeholder="word1 word2 word3 word4 ... (12 atau 24 kata)"></textarea>
+
+      <div class="field-row">
+        <div>
+          <label class="field-label">pin enkripsi <span style="color:var(--text3)">(opsional, sangat disarankan)</span></label>
+          <input type="password" id="pinInput" placeholder="Buat PIN yang kuat">
+        </div>
+        <div>
+          <label class="field-label">ukuran QR code</label>
+          <select id="sizeSelect">
+            <option value="200">Kecil — 200px</option>
+            <option value="300" selected>Sedang — 300px</option>
+            <option value="400">Besar — 400px</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn primary" onclick="generateQR()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM17 17h3v3h-3zM14 20h3"/></svg>
+          Buat QR Code
+        </button>
+        <button class="btn ghost" onclick="clearAll()">Hapus Semua</button>
+      </div>
+    </div>
+
+    <!-- QR Output -->
+    <div class="qr-output" id="qrOutput">
+      <div class="qr-wrap">
+        <div id="qrCanvas"></div>
+      </div>
+      <div class="qr-meta">
+        <span class="dot"></span>
+        <span id="encLabel">—</span>
+      </div>
+      <div class="qr-actions">
+        <button class="btn" onclick="downloadQR('png')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Unduh PNG
+        </button>
+        <button class="btn" onclick="downloadQR('svg')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Unduh SVG
+        </button>
+        <button class="btn" onclick="printQR()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Cetak
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL: SCAN QR -->
+  <div class="panel" id="panel-scan">
+    <div class="card">
+      <div class="card-title">Scan QR Code</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.7;">Arahkan kamera ke QR code atau upload gambar. Semua proses decode berjalan lokal.</p>
+
+      <div class="cam-wrap">
+        <video id="camVideo" autoplay playsinline muted></video>
+        <canvas id="camCanvas"></canvas>
+        <div class="cam-overlay">
+          <div class="cam-frame"><span></span></div>
+        </div>
+        <div class="scan-line" id="scanLine"></div>
+        <div class="cam-placeholder" id="camPlaceholder">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          kamera belum aktif
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn primary" id="startCamBtn" onclick="startCamera()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+          Aktifkan Kamera
+        </button>
+        <button class="btn ghost" id="stopCamBtn" style="display:none;" onclick="stopCamera()">Hentikan</button>
+        <label class="upload-label">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Upload Gambar
+          <input type="file" accept="image/*" onchange="scanFromFile(event)">
+        </label>
+      </div>
+
+      <div class="status" id="scanStatus">—</div>
+
+      <!-- Scan Result -->
+      <div class="result-box" id="scanResult">
+        <div class="result-label">Hasil Scan</div>
+        <div class="result-text dim" id="scanResultText"></div>
+
+        <div class="decrypt-inline" id="scanDecryptArea">
+          <p>⚠ Teks terenkripsi — masukkan PIN untuk membuka seed phrase</p>
+          <div class="inline-row">
+            <input type="password" id="scanPinInput" placeholder="Masukkan PIN">
+            <button class="btn primary" onclick="decryptScanResult()">Buka</button>
+          </div>
+          <div class="result-box success" id="scanDecryptResult" style="margin-top:12px;">
+            <div class="result-label">Seed Phrase</div>
+            <div class="result-text" id="scanDecryptText"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL: DEKRIPSI -->
+  <div class="panel" id="panel-dec">
+    <div class="card">
+      <div class="card-title">Dekripsi Teks ENC</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.7;">Paste teks <code style="font-family:var(--mono);color:var(--accent);font-size:11px;">ENC:xxxx:xxxx:xxxx</code> dari hasil scan QR di HP atau perangkat lain.</p>
+
+      <label class="field-label">teks terenkripsi</label>
+      <textarea id="decodeInput" placeholder="ENC:xxxxxxxx:xxxxxxxx:xxxxxxxx" style="min-height:80px;"></textarea>
+
+      <div class="field-row">
+        <div>
+          <label class="field-label">PIN</label>
+          <input type="password" id="decPinInput" placeholder="Masukkan PIN enkripsi">
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn primary" onclick="decodeText()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Dekripsi
+        </button>
+      </div>
+
+      <div class="result-box success" id="decodeResult">
+        <div class="result-label">Seed Phrase</div>
+        <div class="result-text" id="decodeResultText"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>SeedQR — berjalan sepenuhnya di browser kamu</p>
+    <p style="margin-top:4px;">tidak ada server · tidak ada analytics · tidak ada internet required</p>
+  </div>
+
+</div>
+
+<!-- QRCode.js (inline fallback via CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
+
+<script>
+'use strict';
+
+// ─── State ───────────────────────────────────────────────
+let camStream = null;
+let scanInterval = null;
+let lastScanned = '';
+let scanPayload = '';
+
+// ─── Tabs ─────────────────────────────────────────────────
+function switchTab(t) {
+  ['gen','scan','dec'].forEach(id => {
+    document.getElementById('panel-'+id).classList.toggle('active', id === t);
+    document.getElementById('tab-'+id).classList.toggle('active', id === t);
+  });
+  if (t !== 'scan') stopCamera();
+}
+
+// ─── Crypto helpers ───────────────────────────────────────
+function toB64(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+function fromB64(s) { return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
+
+async function deriveKey(pin, salt) {
+  const enc = new TextEncoder();
+  const km = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    km,
+    { name: 'AES-GCM', length: 256 },
+    false, ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptText(text, pin) {
+  const enc = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv   = crypto.getRandomValues(new Uint8Array(12));
+  const key  = await deriveKey(pin, salt);
+  const ct   = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(text));
+  return 'ENC:' + toB64(salt) + ':' + toB64(iv) + ':' + toB64(ct);
+}
+
+async function decryptText(payload, pin) {
+  const parts = payload.split(':');
+  if (parts[0] !== 'ENC' || parts.length !== 4) throw new Error('Format tidak valid');
+  const salt = fromB64(parts[1]), iv = fromB64(parts[2]), ct = fromB64(parts[3]);
+  const key  = await deriveKey(pin, salt);
+  const pt   = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  return new TextDecoder().decode(pt);
+}
+
+// ─── Generate QR ─────────────────────────────────────────
+async function generateQR() {
+  const seed = document.getElementById('seedInput').value.trim();
+  const pin  = document.getElementById('pinInput').value;
+  const size = parseInt(document.getElementById('sizeSelect').value);
+
+  if (!seed) { alert('Masukkan seed phrase terlebih dahulu.'); return; }
+
+  let payload = seed;
+  let label   = 'Tidak terenkripsi';
+
+  if (pin) {
+    try {
+      payload = await encryptText(seed, pin);
+      label   = 'AES-256-GCM + PBKDF2 (100k iter)';
+    } catch(e) {
+      alert('Gagal mengenkripsi: ' + e.message);
+      return;
+    }
+  }
+
+  const container = document.getElementById('qrCanvas');
+  container.innerHTML = '';
+
+  new QRCode(container, {
+    text: payload,
+    width: size,
+    height: size,
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  document.getElementById('encLabel').textContent = label;
+  document.getElementById('qrOutput').style.display = 'block';
+}
+
+function downloadQR(fmt) {
+  const canvas = document.querySelector('#qrCanvas canvas');
+  if (!canvas) { alert('Buat QR code terlebih dahulu.'); return; }
+
+  const a = document.createElement('a');
+  const size = parseInt(document.getElementById('sizeSelect').value);
+
+  if (fmt === 'png') {
+    a.download = 'seed-qr.png';
+    a.href = canvas.toDataURL('image/png');
+  } else {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><image href="${canvas.toDataURL()}" width="${size}" height="${size}"/></svg>`;
+    a.download = 'seed-qr.svg';
+    a.href = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  }
+  a.click();
+}
+
+function printQR() {
+  const canvas = document.querySelector('#qrCanvas canvas');
+  if (!canvas) { alert('Buat QR code terlebih dahulu.'); return; }
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><body style="text-align:center;padding:60px;background:#fff;font-family:monospace;">
+    <img src="${canvas.toDataURL()}" style="max-width:400px;display:block;margin:0 auto;">
+    <p style="margin-top:24px;font-size:11px;color:#999;">SeedQR — simpan di tempat yang aman dan rahasia</p>
+    <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+function clearAll() {
+  document.getElementById('seedInput').value = '';
+  document.getElementById('pinInput').value = '';
+  document.getElementById('qrCanvas').innerHTML = '';
+  document.getElementById('qrOutput').style.display = 'none';
+}
+
+// ─── Camera Scanner ───────────────────────────────────────
+async function startCamera() {
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 1280 } }
+    });
+    const video = document.getElementById('camVideo');
+    video.srcObject = camStream;
+
+    document.getElementById('camPlaceholder').style.display = 'none';
+    document.getElementById('startCamBtn').style.display = 'none';
+    document.getElementById('stopCamBtn').style.display = 'inline-flex';
+    document.getElementById('scanLine').classList.add('active');
+    setStatus('scanStatus', 'Kamera aktif — arahkan ke QR code...', 'active');
+    hideScanResult();
+    lastScanned = '';
+
+    scanInterval = setInterval(scanFrame, 250);
+  } catch(e) {
+    setStatus('scanStatus', 'Gagal akses kamera: ' + e.message, 'error');
+  }
+}
+
+function stopCamera() {
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+  const video = document.getElementById('camVideo');
+  video.srcObject = null;
+  document.getElementById('camPlaceholder').style.display = 'flex';
+  document.getElementById('startCamBtn').style.display = 'inline-flex';
+  document.getElementById('stopCamBtn').style.display = 'none';
+  document.getElementById('scanLine').classList.remove('active');
+  setStatus('scanStatus', '—', '');
+}
+
+function scanFrame() {
+  const video = document.getElementById('camVideo');
+  if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+  const canvas = document.getElementById('camCanvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'dontInvert' });
+
+  if (code && code.data && code.data !== lastScanned) {
+    lastScanned = code.data;
+    stopCamera();
+    showScanResult(code.data);
+  }
+}
+
+function scanFromFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = function() {
+    const canvas = document.getElementById('camCanvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'attemptBoth' });
+    URL.revokeObjectURL(url);
+    if (code) {
+      showScanResult(code.data);
+    } else {
+      setStatus('scanStatus', 'QR code tidak terdeteksi di gambar ini.', 'error');
+    }
+    e.target.value = '';
+  };
+  img.src = url;
+}
+
+function showScanResult(text) {
+  scanPayload = text;
+  const isEnc = text.startsWith('ENC:');
+  const preview = isEnc ? text.substring(0, 72) + '...' : text;
+
+  document.getElementById('scanResultText').textContent = preview;
+  document.getElementById('scanResult').style.display = 'block';
+  document.getElementById('scanResult').className = 'result-box ' + (isEnc ? '' : 'success');
+  document.getElementById('scanDecryptArea').style.display = isEnc ? 'block' : 'none';
+  document.getElementById('scanDecryptResult').style.display = 'none';
+  document.getElementById('scanPinInput').value = '';
+
+  setStatus('scanStatus', isEnc ? 'QR terdeteksi — teks terenkripsi, masukkan PIN di bawah' : 'QR terdeteksi!', 'active');
+}
+
+function hideScanResult() {
+  document.getElementById('scanResult').style.display = 'none';
+  scanPayload = '';
+}
+
+async function decryptScanResult() {
+  const pin = document.getElementById('scanPinInput').value;
+  const resBox = document.getElementById('scanDecryptResult');
+  const resText = document.getElementById('scanDecryptText');
+  if (!pin) { alert('Masukkan PIN terlebih dahulu.'); return; }
+  try {
+    const result = await decryptText(scanPayload, pin);
+    resText.textContent = result;
+    resBox.style.display = 'block';
+    resBox.className = 'result-box success';
+  } catch(e) {
+    resText.textContent = 'Dekripsi gagal — PIN salah atau data rusak.';
+    resBox.style.display = 'block';
+    resBox.className = 'result-box error';
+  }
+}
+
+// ─── Decode tab ───────────────────────────────────────────
+async function decodeText() {
+  const payload = document.getElementById('decodeInput').value.trim();
+  const pin     = document.getElementById('decPinInput').value;
+  const resBox  = document.getElementById('decodeResult');
+  const resText = document.getElementById('decodeResultText');
+
+  if (!payload) { alert('Masukkan teks terenkripsi.'); return; }
+
+  resBox.style.display = 'block';
+
+  if (!payload.startsWith('ENC:')) {
+    resText.textContent = payload;
+    resBox.className = 'result-box success';
+    return;
+  }
+
+  if (!pin) {
+    resText.textContent = 'Teks ini terenkripsi — masukkan PIN untuk mendekripsi.';
+    resBox.className = 'result-box';
+    return;
+  }
+
+  try {
+    resText.textContent = await decryptText(payload, pin);
+    resBox.className = 'result-box success';
+  } catch(e) {
+    resText.textContent = 'Dekripsi gagal — PIN salah atau data rusak.';
+    resBox.className = 'result-box error';
+  }
+}
+
+// ─── Helpers ──────────────────────────────────────────────
+function setStatus(id, msg, cls) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'status ' + (cls || '');
+}
+</script>
+</body>
+</html>
